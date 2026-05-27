@@ -4,6 +4,8 @@
 #include <ctime>
 
 #include <SDL2/SDL.h>
+#include <X11/Xlib.h>
+#include <X11/Xatom.h>
 
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
@@ -20,6 +22,11 @@ const int ALPHA = 255;
 
 const int TOTAL_PARTICLES = 100;
 const int PARTICLE_LIFETIME = 1000;
+
+struct DesktopWindow {
+    SDL_Window* sdl_window;
+    Window x11_window;
+};
 
 struct Particle {
     double x, y;
@@ -61,6 +68,84 @@ struct Particle {
 };
 
 
+void get_root_window(Display*& display, Window& root) {
+    display = XOpenDisplay(nullptr);
+    if (display == nullptr) {
+        std::cerr << "Cannot open display" << std::endl;
+        exit(1);
+    }
+    root = DefaultRootWindow(display);
+}
+
+void set_window_hints(Display* display, Window window) {
+    Atom atom = XInternAtom(display, "_NET_WM_WINDOW_TYPE", false);
+    Atom desktop_atom = XInternAtom(display, "_NET_WM_WINDOW_TYPE_DESKTOP", false);
+    XChangeProperty(
+        display,
+        window,
+        atom,
+        XA_ATOM,
+        32,
+        PropModeReplace,
+        reinterpret_cast<unsigned char*>(&desktop_atom),
+        1
+    );
+    Atom states[2] = {
+        XInternAtom(display, "_NET_WM_STATE_BELOW", false),
+        XInternAtom(display, "_NET_WM_STATE_SKIP_TASKBAR", false)
+    };
+    Atom state_atom = XInternAtom(display, "_NET_WM_STATE", false);
+    XChangeProperty(
+        display,
+        window,
+        state_atom,
+        XA_ATOM,
+        32,
+        PropModeReplace,
+        reinterpret_cast<unsigned char*>(states),
+        2
+    );
+}
+
+DesktopWindow create_desktop_window(Display* display, Window root, int width, int height) {
+    XSetWindowAttributes attrs;
+    attrs.override_redirect = False;
+    attrs.event_mask = ExposureMask | StructureNotifyMask;
+    Window window = XCreateWindow(
+        display,
+        root,
+        0, 0,
+        width, height,
+        0,
+        XDefaultDepth(display, DefaultScreen(display)),
+        InputOutput,
+        XDefaultVisual(display, DefaultScreen(display)),
+        CWOverrideRedirect | CWEventMask,
+        &attrs
+    );
+    XStoreName(display, window, "LiveWallpaper");
+
+    set_window_hints(display, window);
+
+    XMapWindow(display, window);
+    XLowerWindow(display, window);
+
+    XEvent event = {};
+    event.type = ClientMessage;
+    event.xclient.window = window;
+    event.xclient.message_type = XInternAtom(display, "_NET_WM_STATE", false);
+    event.xclient.format = 32;
+    event.xclient.data.l[0] = 1;
+    event.xclient.data.l[1] = XInternAtom(display, "_NET_WM_STATE_BELOW", false);
+    event.xclient.data.l[2] = 0;
+
+    XSendEvent(display, root, false,
+        SubstructureNotifyMask | SubstructureRedirectMask,
+        &event);
+    XFlush(display);
+    return {SDL_CreateWindowFrom((void*)window), window};
+}
+
 void change_color(int& color_modifier, int& diff) {
     ++diff;
     if (diff >= 510) {
@@ -74,18 +159,25 @@ void change_color(int& color_modifier, int& diff) {
 }
 
 int main() {
-
     srand(static_cast<unsigned>(time(nullptr)));
+
+    Display* display = nullptr;
+    Window root;
+    get_root_window(display, root);
 
     if (SDL_Init(SDL_INIT_VIDEO) != 0){
         std::cout << "SDL_Init Error: " << SDL_GetError() << std::endl;
         return 1;
     }
 
-    SDL_Window *win = SDL_CreateWindow("LiveWallpaper", SDL_WINDOWPOS_CENTERED,
-        SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
+    DesktopWindow desktop_window = create_desktop_window(
+        display, root,
+        XDisplayWidth(display, DefaultScreen(display)),
+        XDisplayHeight(display, DefaultScreen(display))
+    );
+    SDL_Window *win = desktop_window.sdl_window;
     if (win == nullptr){
-        std::cout << "SDL_CreateWindow Error: " << SDL_GetError() << std::endl;
+        std::cout << "SDL_CreateWindowFrom Error: " << SDL_GetError() << std::endl;
         return 1;
     }
 
@@ -145,4 +237,7 @@ int main() {
     SDL_DestroyRenderer(ren);
     SDL_DestroyWindow(win);
     SDL_Quit();
+
+    XDestroyWindow(display, desktop_window.x11_window);
+    XCloseDisplay(display);
 }

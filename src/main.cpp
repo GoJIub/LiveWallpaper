@@ -1,5 +1,7 @@
 #include "particles/particle.hpp"
 #include "window/desktop_window.hpp"
+#include "data/system_data.hpp"
+#include "data/weather.hpp"
 
 #include <iostream>
 #include <vector>
@@ -20,17 +22,29 @@ const int ALPHA = 255;
 
 const int TOTAL_PARTICLES = 100;
 
-
-void change_color(int& color_modifier, int& diff) {
-    ++diff;
-    if (diff >= 510) {
-        diff = 0;
-        color_modifier = 0;
-    } else if (diff >= 255) {
-        color_modifier = 510 - diff;
+void change_color(int& color_modifier) {
+    int current_time = get_current_time();
+    if (current_time < 12 * 3600) {
+        color_modifier = current_time * 255 / (12 * 3600);
     } else {
-        color_modifier = diff;
+        color_modifier = (24 * 3600 - current_time) * 255 / (12 * 3600);
     }
+}
+
+SDL_Color get_temperature_palette_color(double temperature) {
+    if (temperature < 0.0) {
+        return {80, 150, 255, 255};
+    }
+    if (temperature < 10.0) {
+        return {90, 220, 210, 255};
+    }
+    if (temperature < 20.0) {
+        return {130, 230, 140, 255};
+    }
+    if (temperature < 30.0) {
+        return {255, 205, 90, 255};
+    }
+    return {255, 110, 90, 255};
 }
 
 int main() {
@@ -66,13 +80,22 @@ int main() {
     }
     SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND);
 
-    int color_modifier = 0, diff = 0;
+    WeatherClient weather_client;
+    WeatherData weather_data = weather_client.current();
+
     std::vector<Particle> particles;
+    SDL_Color palette_color = get_temperature_palette_color(weather_data.temperature);
     for (int i = 0; i < TOTAL_PARTICLES; ++i) {
-        particles.emplace_back(Particle(screen_width, screen_height));
+        particles.emplace_back(
+            Particle(
+                screen_width,
+                screen_height,
+                palette_color
+            )
+        );
     }
 
-
+    int color_modifier;
     bool running = true;
     SDL_Event event;
     while (running) {
@@ -82,6 +105,7 @@ int main() {
             }
         }
 
+        change_color(color_modifier);
         int success = SDL_SetRenderDrawColor(
             ren,
             RED + color_modifier,
@@ -99,8 +123,21 @@ int main() {
             return 1;
         }
 
+        if (weather_client.update()) {
+            weather_data = weather_client.current();
+        }
+
+        int cpu_usage = get_cpu_usage();
+        palette_color = get_temperature_palette_color(weather_data.temperature);
         for (auto& p : particles) {
-            p.update(screen_width, screen_height);
+            p.update(
+                screen_width,
+                screen_height,
+                cpu_usage,
+                palette_color,
+                weather_data.wind_speed,
+                weather_data.wind_direction
+            );
             auto [r, g, b, a] = p.get_color();
             auto [x, y] = p.get_position();
             int size = p.get_size();
@@ -112,7 +149,6 @@ int main() {
         SDL_RenderPresent(ren);
 
         SDL_Delay(FRAME_DELAY);
-        change_color(color_modifier, diff);
     }
 
     SDL_DestroyRenderer(ren);

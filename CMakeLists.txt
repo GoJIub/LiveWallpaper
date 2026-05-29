@@ -21,6 +21,14 @@ add_executable(LiveWallpaper
     src/window/desktop_window.cpp
     src/data/system_data.cpp
     src/data/weather.cpp
+    src/config/config.cpp
+    src/signal_handler/signal_handler.cpp
+)
+
+configure_file(
+    ${CMAKE_SOURCE_DIR}/config.default.json
+    ${CMAKE_BINARY_DIR}/config.default.json
+    COPYONLY
 )
 
 target_link_libraries(LiveWallpaper

@@ -14,13 +14,14 @@ struct WeatherData {
 
 class WeatherClient {
 public:
-    WeatherClient();
+    WeatherClient(double latitude, double longitude, int update_interval);
     ~WeatherClient();
 
     bool update();
     WeatherData current() const;
 
 private:
+    std::string weather_url() const;
     void start_request();
     bool finish_request(CURLcode result);
     void cleanup_request();
@@ -31,8 +32,12 @@ private:
     std::string response;
     std::string request_url;
     char error_buffer[CURL_ERROR_SIZE] = {};
-    WeatherData weather_data;
     std::chrono::steady_clock::time_point last_request;
+
+    WeatherData weather_data;
+    double latitude;
+    double longitude;
+    std::chrono::minutes update_interval;
 };
 
 #endif // WEATHER_HPP

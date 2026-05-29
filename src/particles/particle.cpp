@@ -4,8 +4,6 @@
 #include <cmath>
 #include <cstdlib>
 
-const int PARTICLE_LIFETIME = 1000;
-
 static const double pi = std::acos(-1.0);
 
 static Uint8 vary_color(Uint8 value) {
@@ -13,7 +11,7 @@ static Uint8 vary_color(Uint8 value) {
     return static_cast<Uint8>(std::clamp(color, 0, 255));
 }
 
-Particle::Particle(int screen_width, int screen_height, SDL_Color palette_color) {
+Particle::Particle(int screen_width, int screen_height, SDL_Color palette_color, int lifetime) {
     x = rand() % screen_width;
     y = rand() % screen_height;
     double angle = (rand() % 360) * pi / 180.0;
@@ -25,7 +23,8 @@ Particle::Particle(int screen_width, int screen_height, SDL_Color palette_color)
     b = vary_color(palette_color.b);
     alpha = 0;
     size = rand() % 5 + 1;
-    lifetime = rand() % PARTICLE_LIFETIME;
+    max_lifetime = lifetime;
+    this->lifetime = rand() % max_lifetime;
 }
 
 void Particle::update(
@@ -58,7 +57,7 @@ void Particle::update(
         vy = -vy;
     }
     if (age >= lifetime) {
-        *this = Particle(screen_width, screen_height, palette_color);
+        *this = Particle(screen_width, screen_height, palette_color, max_lifetime);
     }
 }
 

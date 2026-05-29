@@ -2,6 +2,8 @@
 #include "window/desktop_window.hpp"
 #include "data/system_data.hpp"
 #include "data/weather.hpp"
+#include "config/config.hpp"
+#include "signal_handler/signal_handler.hpp"
 
 #include <iostream>
 #include <vector>
@@ -12,15 +14,10 @@
 
 const Uint32 RENDER_FLAGS = SDL_RENDERER_ACCELERATED;
 
-const int FPS = 30;
-const int FRAME_DELAY = 1000 / FPS;
-
 const int RED = 0;
 const int GREEN = 0;
 const int BLUE = 0;
 const int ALPHA = 255;
-
-const int TOTAL_PARTICLES = 100;
 
 void change_color(int& color_modifier) {
     int current_time = get_current_time();
@@ -49,6 +46,12 @@ SDL_Color get_temperature_palette_color(double temperature) {
 
 int main() {
     srand(static_cast<unsigned>(time(nullptr)));
+
+    setup_signal_handlers();
+
+    ConfigManager config_manager("config.json");
+    const Config& config = config_manager.get_config();
+
 
     Display* display = nullptr;
     Window root;
@@ -80,28 +83,32 @@ int main() {
     }
     SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND);
 
-    WeatherClient weather_client;
+    WeatherClient weather_client(
+        config.latitude,
+        config.longitude,
+        config.weather_update_interval
+    );
     WeatherData weather_data = weather_client.current();
 
     std::vector<Particle> particles;
     SDL_Color palette_color = get_temperature_palette_color(weather_data.temperature);
-    for (int i = 0; i < TOTAL_PARTICLES; ++i) {
+    for (int i = 0; i < config.particle_count; ++i) {
         particles.emplace_back(
             Particle(
                 screen_width,
                 screen_height,
-                palette_color
+                palette_color,
+                config.particle_lifetime
             )
         );
     }
 
     int color_modifier;
-    bool running = true;
     SDL_Event event;
     while (running) {
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) {
-                running = false;
+                running.store(false);
             }
         }
 
@@ -148,7 +155,7 @@ int main() {
 
         SDL_RenderPresent(ren);
 
-        SDL_Delay(FRAME_DELAY);
+        SDL_Delay(1000 / config.fps);
     }
 
     SDL_DestroyRenderer(ren);

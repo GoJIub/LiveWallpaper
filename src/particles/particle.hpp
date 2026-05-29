@@ -11,7 +11,7 @@ class Particle {
 
 public:
 
-    Particle(int screen_width, int screen_height, SDL_Color palette_color);
+    Particle(int screen_width, int screen_height, SDL_Color palette_color, int lifetime);
 
     void update(
         int screen_width,
@@ -34,6 +34,7 @@ private:
     Uint8 r, g ,b;
     Uint8 alpha;
     int size;
+    int max_lifetime;
     int lifetime;
     int age = 0;
 };

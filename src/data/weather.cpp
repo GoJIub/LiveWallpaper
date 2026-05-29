@@ -7,9 +7,6 @@
 #include <mutex>
 #include <stdexcept>
 
-const double LATITUDE = 55.875;
-const double LONGITUDE = 37.5625;
-const auto WEATHER_UPDATE_INTERVAL = std::chrono::minutes(10);
 
 static void init_curl() {
     static std::once_flag init_flag;
@@ -30,15 +27,19 @@ static size_t write_response(char* ptr, size_t size, size_t nmemb, void* userdat
     return size * nmemb;
 }
 
-static std::string weather_url() {
+std::string WeatherClient::weather_url() const {
     return "https://api.open-meteo.com/v1/forecast?latitude=" +
-        std::to_string(LATITUDE) +
+        std::to_string(latitude) +
         "&longitude=" +
-        std::to_string(LONGITUDE) +
+        std::to_string(longitude) +
         "&current_weather=true";
 }
 
-WeatherClient::WeatherClient() {
+WeatherClient::WeatherClient(double latitude, double longitude, int update_interval) :
+    latitude(latitude),
+    longitude(longitude),
+    update_interval(std::chrono::minutes(update_interval))
+{
     init_curl();
 
     multi = curl_multi_init();
@@ -46,7 +47,7 @@ WeatherClient::WeatherClient() {
         throw std::runtime_error("Failed to initialize CURL multi handle");
     }
 
-    last_request = std::chrono::steady_clock::now() - WEATHER_UPDATE_INTERVAL;
+    last_request = std::chrono::steady_clock::now() - this->update_interval;
 }
 
 WeatherClient::~WeatherClient() {
@@ -58,7 +59,7 @@ WeatherClient::~WeatherClient() {
 
 bool WeatherClient::update() {
     auto now = std::chrono::steady_clock::now();
-    if (!easy && now - last_request >= WEATHER_UPDATE_INTERVAL) {
+    if (!easy && now - last_request >= update_interval) {
         start_request();
         last_request = now;
     }

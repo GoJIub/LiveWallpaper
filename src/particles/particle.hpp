@@ -5,11 +5,11 @@
 
 class Particle {
 
+public:
+
     struct Point {
         double x, y;
     };
-
-public:
 
     Particle(int screen_width, int screen_height, SDL_Color palette_color, int lifetime);
 
@@ -25,6 +25,8 @@ public:
     Point get_position() const;
     SDL_Color get_color() const;
     int get_size() const;
+    int get_lifetime() const;
+    int get_age() const;
 
     ~Particle() = default;
 

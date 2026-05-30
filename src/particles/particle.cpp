@@ -23,8 +23,8 @@ Particle::Particle(int screen_width, int screen_height, SDL_Color palette_color,
     b = vary_color(palette_color.b);
     alpha = 0;
     size = rand() % 5 + 1;
-    max_lifetime = lifetime;
-    this->lifetime = rand() % max_lifetime;
+    max_lifetime = std::max(1, lifetime);
+    this->lifetime = rand() % max_lifetime + 1;
 }
 
 void Particle::update(
@@ -71,4 +71,12 @@ SDL_Color Particle::get_color() const {
 
 int Particle::get_size() const {
     return size;
+}
+
+int Particle::get_lifetime() const {
+    return lifetime;
+}
+
+int Particle::get_age() const {
+    return age;
 }

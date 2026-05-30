@@ -1,5 +1,6 @@
 #include "config.hpp"
 
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -9,12 +10,27 @@
 namespace fs = std::filesystem;
 
 const int MIN_WEATHER_UPDATE_INTERVAL = 1;
+const int MIN_FPS = 1;
+const int MIN_PARTICLE_LIFETIME = 1;
 const double DEFAULT_LATITUDE = 55.0;
 const double DEFAULT_LONGITUDE = 37.0;
 const int DEFAULT_FPS = 30;
 const int DEFAULT_PARTICLE_COUNT = 100;
 const int DEFAULT_PARTICLE_LIFETIME = 1000;
-const std::string DEFAULT_CONFIG_PATH = "config.default.json";
+const std::string DEFAULT_CONFIG_FILENAME = "config.default.json";
+
+#ifndef DATA_DIR
+#define DATA_DIR "."
+#endif
+
+fs::path default_config_path() {
+    const char* test_data_dir = std::getenv("LIVEWALLPAPER_DATA_DIR");
+    if (test_data_dir) {
+        return fs::path(test_data_dir) / DEFAULT_CONFIG_FILENAME;
+    }
+
+    return fs::path(DATA_DIR) / DEFAULT_CONFIG_FILENAME;
+}
 
 ConfigManager::ConfigManager(const std::string& file_path): config_file_path(file_path) {
     std::ifstream config_file(config_file_path);
@@ -28,7 +44,7 @@ ConfigManager::ConfigManager(const std::string& file_path): config_file_path(fil
 
         fs::create_directories(fs::path(user_config_path).parent_path());
         fs::copy_file(
-            fs::path(DEFAULT_CONFIG_PATH),
+            default_config_path(),
             fs::path(user_config_path),
             fs::copy_options::overwrite_existing
         );
@@ -50,6 +66,14 @@ ConfigManager::ConfigManager(const std::string& file_path): config_file_path(fil
     if (config.weather_update_interval < MIN_WEATHER_UPDATE_INTERVAL) {
         config.weather_update_interval = MIN_WEATHER_UPDATE_INTERVAL;
         std::cout << "Weather update interval too low, set to minimum: " << MIN_WEATHER_UPDATE_INTERVAL << " minute(s)" << std::endl;
+    }
+    if (config.fps < MIN_FPS) {
+        config.fps = MIN_FPS;
+        std::cout << "FPS too low, set to minimum: " << MIN_FPS << std::endl;
+    }
+    if (config.particle_lifetime < MIN_PARTICLE_LIFETIME) {
+        config.particle_lifetime = MIN_PARTICLE_LIFETIME;
+        std::cout << "Particle lifetime too low, set to minimum: " << MIN_PARTICLE_LIFETIME << std::endl;
     }
 }
 

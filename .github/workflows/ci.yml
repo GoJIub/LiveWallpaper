@@ -11,8 +11,10 @@ jobs:
           path: build/_deps
           key: ${{ runner.os }}-gtest-1.14.0
       - name: Install dependencies
-        run: sudo apt install -y libsdl2-dev libx11-dev libcurl4-openssl-dev nlohmann-json3-dev
+        run: sudo apt install -y libsdl2-dev libx11-dev libcurl4-openssl-dev nlohmann-json3-dev valgrind
       - name: Build
         run: cmake -B build && cmake --build build
       - name: Test
         run: cd build && ctest --output-on-failure
+      - name: Valgrind
+        run: valgrind --tool=memcheck --leak-check=full --error-exitcode=1 ./build/LiveWallpaperTests

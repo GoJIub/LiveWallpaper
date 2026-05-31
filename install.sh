@@ -9,7 +9,7 @@ if [[ "$1" == "--enable" ]]; then
 fi
 
 echo "Building LiveWallpaper..."
-cmake -B build
+cmake -B build -DBUILD_TESTING=OFF
 cmake --build build
 
 echo "Installing LiveWallpaper..."
@@ -20,7 +20,6 @@ mkdir -p ~/.config/systemd/user
 cp /usr/local/share/livewallpaper/livewallpaper.service ~/.config/systemd/user/
 systemctl --user daemon-reload
 systemctl --user enable livewallpaper
-systemctl --user start livewallpaper
 
 systemctl --user start livewallpaper
 echo "Done! LiveWallpaper has been installed and started."

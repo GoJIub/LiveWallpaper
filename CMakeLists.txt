@@ -91,3 +91,25 @@ if(BUILD_TESTING)
     include(GoogleTest)
     gtest_discover_tests(LiveWallpaperTests)
 endif()
+
+find_program(VALGRIND valgrind)
+if(VALGRIND)
+    add_custom_target(valgrind-memcheck
+        COMMAND ${VALGRIND} --tool=memcheck --leak-check=full --show-leak-kinds=all
+            $<TARGET_FILE:LiveWallpaper>
+        DEPENDS LiveWallpaper
+    )
+
+    add_custom_target(valgrind-massif
+        COMMAND ${VALGRIND} --tool=massif --massif-out-file=massif.out
+            $<TARGET_FILE:LiveWallpaper>
+        COMMAND ms_print massif.out > massif.txt
+        DEPENDS LiveWallpaper
+    )
+
+    add_custom_target(valgrind-callgrind
+        COMMAND ${VALGRIND} --tool=callgrind
+            $<TARGET_FILE:LiveWallpaper>
+        DEPENDS LiveWallpaper
+    )
+endif()
